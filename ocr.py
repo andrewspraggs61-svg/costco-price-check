@@ -56,38 +56,61 @@ def _locate_tesseract():
     return False
 
 
+def _prep_base(image_bytes: bytes):
+    """Greyscale, resolution-normalise, and contrast-stretch. Returns a PIL image."""
+    import io
+    from PIL import Image, ImageOps
+    img = Image.open(io.BytesIO(image_bytes)).convert("L")
+    # Normalise resolution before OCR. A full phone photo (~12MP) makes Tesseract
+    # take ~2 minutes on a small free host -- fatal. Downscale big images (tag
+    # text stays legible at ~1800px) and upscale tiny ones so characters are tall
+    # enough to read.
+    TARGET = 1800
+    longest = max(img.size)
+    if longest > TARGET or longest < 1200:
+        factor = TARGET / longest
+        img = img.resize((max(1, int(img.width * factor)),
+                          max(1, int(img.height * factor))), Image.LANCZOS)
+    return ImageOps.autocontrast(img)
+
+
+def _otsu(gray):
+    """Binarise a greyscale image at its Otsu threshold -- big win on clean,
+    high-contrast tags (black text on white). Pure-Python, no numpy."""
+    hist = gray.histogram()[:256]
+    total = sum(hist)
+    sum_all = sum(i * h for i, h in enumerate(hist))
+    sumB = wB = 0
+    maximum = 0.0
+    threshold = 128
+    for i in range(256):
+        wB += hist[i]
+        if wB == 0:
+            continue
+        wF = total - wB
+        if wF == 0:
+            break
+        sumB += i * hist[i]
+        mB = sumB / wB
+        mF = (sum_all - sumB) / wF
+        between = wB * wF * (mB - mF) ** 2
+        if between > maximum:
+            maximum = between
+            threshold = i
+    return gray.point(lambda p: 255 if p > threshold else 0, mode="L")
+
+
 def run_ocr(image_bytes: bytes) -> str:
-    """
-    Return raw OCR text for an image. If pytesseract/Pillow or the Tesseract
-    binary aren't available, return "" so callers fall back to manual entry
-    rather than crashing.
-    """
+    """Single best-effort OCR pass (sharpened, psm 6). Returns "" on any failure."""
     try:
-        import io
-        from PIL import Image
         import pytesseract
+        from PIL import ImageFilter
     except Exception:
         return ""
-
     if not _locate_tesseract():
         return ""
-
     try:
-        from PIL import ImageOps, ImageFilter
-        img = Image.open(io.BytesIO(image_bytes)).convert("L")  # greyscale
-        # Normalise resolution before OCR. A full phone photo (~12MP) makes
-        # Tesseract take ~2 minutes on a small free host -- fatal. Downscale big
-        # images (tag text stays legible at ~1800px) and upscale tiny ones so
-        # characters are tall enough to read. This is the key latency fix.
-        TARGET = 1800
-        longest = max(img.size)
-        if longest > TARGET or longest < 1200:
-            factor = TARGET / longest
-            img = img.resize((max(1, int(img.width * factor)),
-                              max(1, int(img.height * factor))), Image.LANCZOS)
-        img = ImageOps.autocontrast(img)
-        img = img.filter(ImageFilter.SHARPEN)
-        # psm 6 = assume a single uniform block of text, which a shelf tag is.
+        img = _prep_base(image_bytes).filter(ImageFilter.SHARPEN)
         return pytesseract.image_to_string(img, config="--psm 6")
     except Exception:
         return ""
@@ -166,9 +189,59 @@ def parse_tag(raw_text: str) -> TagFields:
     return fields
 
 
+def _score(tag: TagFields) -> float:
+    """
+    How good a parse is. A shelf price and item number are the reliable,
+    structured signals; description length counts a little (a real product name
+    is several words) but is capped so garbled noise can't win on length alone.
+    """
+    s = 0.0
+    if tag.price is not None:
+        s += 3.0
+    if tag.item_no:
+        s += 2.0
+    if tag.printed_unit_price is not None:
+        s += 1.0
+    words = len(re.findall(r"[A-Za-z]{3,}", tag.description))
+    s += min(words, 6) * 0.5
+    return s
+
+
 def read_tag(image_bytes: bytes) -> TagFields:
-    """Full pipeline: OCR the image, then parse fields out of the text."""
-    return parse_tag(run_ocr(image_bytes))
+    """
+    Full pipeline. Runs OCR under several image treatments and layout modes and
+    keeps whichever parse scores best -- this "try a few, keep the best" approach
+    is more robust on real photos than any single fixed pipeline.
+    """
+    try:
+        import pytesseract
+        from PIL import ImageFilter
+    except Exception:
+        return TagFields()
+    if not _locate_tesseract():
+        return TagFields()
+    try:
+        base = _prep_base(image_bytes)
+    except Exception:
+        return TagFields()
+
+    variants = [
+        base.filter(ImageFilter.SHARPEN),   # sharpened greyscale
+        _otsu(base),                        # binarised (high-contrast tags)
+    ]
+    best = TagFields()
+    best_score = -1.0
+    for vimg in variants:
+        for psm in (6, 4):                  # 6=uniform block, 4=single column
+            try:
+                text = pytesseract.image_to_string(vimg, config=f"--psm {psm}")
+            except Exception:
+                continue
+            tag = parse_tag(text)
+            sc = _score(tag)
+            if sc > best_score:
+                best_score, best = sc, tag
+    return best
 
 
 # --- Search-term reduction --------------------------------------------------
