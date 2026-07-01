@@ -127,14 +127,23 @@ $("checkBtn").addEventListener("click", async () => {
     clearTimeout(timer);
     const data = await res.json();
 
+    // If a photo was scanned, always surface what OCR actually read, and drop it
+    // into the editable fields so a bad read can be corrected before comparing.
+    const rb = $("readback");
+    if (data.ocr && data.ocr.raw_text) {
+      const o = data.ocr;
+      $("name").value = o.description || $("name").value;
+      $("size").value = o.size || $("size").value;
+      if (o.price != null) $("price").value = o.price;
+      $("manualBox").open = true;
+      rb.hidden = false;
+      rb.textContent = `📖 Read from photo — name: “${o.description || "?"}”, size: ${o.size || "?"}, price: ${o.price != null ? "$" + o.price : "?"}. If any of that is wrong, fix it above and tap Check prices again.`;
+    } else {
+      rb.hidden = true;
+    }
+
     if (data.status === "needs_manual") {
       status.textContent = data.message;
-      $("manualBox").open = true;
-      if (data.ocr) {
-        $("name").value = $("name").value || data.ocr.description || "";
-        $("size").value = $("size").value || data.ocr.size || "";
-        if (data.ocr.price) $("price").value = $("price").value || data.ocr.price;
-      }
       return;
     }
 
