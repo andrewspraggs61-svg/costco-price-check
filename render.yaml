@@ -1,0 +1,10 @@
+# Render Blueprint -- lets you deploy this repo in a couple of clicks.
+# https://render.com  (free web service, no credit card required)
+services:
+  - type: web
+    name: costco-price-check
+    runtime: docker
+    plan: free              # free instance (spins down when idle; cold start ~30-60s)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeployTrigger: commit

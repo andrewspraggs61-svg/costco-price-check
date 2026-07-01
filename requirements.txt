@@ -1,0 +1,12 @@
+Flask>=3.0
+# Production WSGI server used in the Docker image / on Render:
+gunicorn>=21.0
+# OCR (free, local). Also needs the Tesseract *binary* installed on the machine:
+#   Windows: https://github.com/UB-Mannheim/tesseract/wiki
+#   The app still runs without it — it just falls back to manual entry.
+pytesseract>=0.3.10
+Pillow>=10.0
+# For the live competitor lookups (currently mocked):
+requests>=2.31
+# Optional v2: fuzzy text-similarity to refine ranking
+# rapidfuzz>=3.0

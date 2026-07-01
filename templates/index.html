@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#004b91">
+  <title>Costco Price Check</title>
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+</head>
+<body>
+  <header>
+    <h1>Costco Price Check</h1>
+    <p id="locationLine" class="muted">Finding your nearest stores…</p>
+  </header>
+
+  <main>
+    <!-- Scan / enter the Costco item -->
+    <section class="card">
+      <label class="camera-btn">
+        📷 Scan a Costco shelf tag
+        <input id="photo" type="file" accept="image/*" capture="environment" hidden>
+      </label>
+
+      <details id="manualBox">
+        <summary>Or type it in / correct a scan</summary>
+        <div class="fields">
+          <input id="name" type="text" placeholder="Item name (e.g. Butter)">
+          <input id="size" type="text" placeholder="Size (e.g. 2x500g)">
+          <input id="price" type="text" inputmode="decimal" placeholder="Costco price (e.g. 12.99)">
+        </div>
+      </details>
+
+      <button id="checkBtn" class="primary">Check prices</button>
+      <p id="status" class="muted"></p>
+    </section>
+
+    <!-- Results -->
+    <section id="results" class="card" hidden>
+      <h2>Cheapest per unit</h2>
+      <div id="resultRows"></div>
+      <p class="muted small">Ranked by unit price. Rows may use different units
+        (e.g. $/100g vs $/L) — check the size column before trusting rank #1.</p>
+    </section>
+
+    <!-- Store selection (auto by location, manual override) -->
+    <section class="card">
+      <details>
+        <summary>Stores being compared</summary>
+        <div id="storeSelection" class="muted small">Detecting…</div>
+      </details>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "Costco Price Check",
+  "short_name": "PriceCheck",
+  "description": "Scan a Costco shelf tag and compare unit prices at Woolworths, PAK'nSAVE and New World.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#004b91",
+  "theme_color": "#004b91",
+  "icons": [
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
