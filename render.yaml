@@ -7,4 +7,4 @@ services:
     plan: free              # free instance (spins down when idle; cold start ~30-60s)
     dockerfilePath: ./Dockerfile
     healthCheckPath: /
-    autoDeployTrigger: commit
+    autoDeploy: true
