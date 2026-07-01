@@ -1,0 +1,19 @@
+name: keep-alive
+
+# Pings the app every ~10 minutes so Render's free instance doesn't spin down
+# (which causes slow ~30-60s cold starts on the phone). Free — runs on GitHub's
+# scheduled Actions. Scheduled runs can be delayed a few minutes under load,
+# which is fine for keeping the instance warm.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}   # lets you trigger it manually from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /healthz
+        run: |
+          curl -s -m 60 -o /dev/null -w "healthz HTTP %{http_code}\n" \
+            https://costco-price-check.onrender.com/healthz || true

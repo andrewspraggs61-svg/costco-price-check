@@ -26,6 +26,12 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/healthz")
+def healthz():
+    """Tiny, dependency-free endpoint for the keep-alive pinger to hit."""
+    return "ok", 200
+
+
 @app.route("/api/stores")
 def api_stores():
     """Nearest branch per chain for a given location; falls back to full list."""

@@ -120,7 +120,7 @@ $("checkBtn").addEventListener("click", async () => {
 
   // Don't hang forever if the server is slow/asleep — fail with a clear message.
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 90000);
+  const timer = setTimeout(() => controller.abort(), 120000);
 
   try {
     const res = await fetch("/api/scan", { method: "POST", body: fd, signal: controller.signal });
@@ -143,7 +143,7 @@ $("checkBtn").addEventListener("click", async () => {
   } catch (e) {
     clearTimeout(timer);
     status.textContent = e.name === "AbortError"
-      ? "The server took too long to respond. Give it a moment to wake up, then try again."
+      ? "Server was asleep — it's waking up now. Wait ~10s, then tap Check prices again (the second try is fast)."
       : "Something went wrong. Try again.";
   }
 });
