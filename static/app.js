@@ -3,6 +3,9 @@
 const state = {
   stores: {},        // per-chain selection sent to the backend
   coords: null,
+  // Which shops are switched on. Woolworths defaults OFF because it's blocked
+  // from the free cloud host; the user can turn it on (e.g. if self-hosting).
+  enabled: { "Woolworths": false, "New World": true, "PAK'nSAVE": true },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -48,17 +51,26 @@ function renderStoreSelection(data) {
   }
   const box = $("storeSelection");
   box.innerHTML = "";
-  ["Woolworths", "PAK'nSAVE", "New World"].forEach((chain) => {
+  ["PAK'nSAVE", "New World", "Woolworths"].forEach((chain) => {
     const row = document.createElement("div");
     row.className = "store-row";
-    const label = document.createElement("span");
-    label.textContent = chain + ": ";
+
+    // On/off toggle for this shop.
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.checked = !!state.enabled[chain];
+    toggle.addEventListener("change", () => { state.enabled[chain] = toggle.checked; });
+
+    const label = document.createElement("label");
+    label.textContent = chain;
+    label.style.minWidth = "92px";
+
     const sel = document.createElement("select");
     (data.all || [])
       .filter((s) => s.chain === chain)
       .forEach((s) => {
         const opt = document.createElement("option");
-        opt.value = s.store_id;
+        opt.value = s.store_id == null ? "" : s.store_id;
         opt.textContent = s.name;
         if (nearest[chain] && nearest[chain].store_id === s.store_id) opt.selected = true;
         sel.appendChild(opt);
@@ -66,7 +78,10 @@ function renderStoreSelection(data) {
     sel.addEventListener("change", () => {
       state.stores[chain] = { ...(state.stores[chain] || {}), store_id: sel.value };
     });
-    row.append(label, sel);
+    // Woolworths is national (one option) — no point showing a picker.
+    if (chain === "Woolworths") sel.style.display = "none";
+
+    row.append(toggle, label, sel);
     box.appendChild(row);
   });
 }
@@ -90,7 +105,18 @@ $("checkBtn").addEventListener("click", async () => {
   if ($("name").value) fd.append("name", $("name").value);
   if ($("size").value) fd.append("size", $("size").value);
   if ($("price").value) fd.append("price", $("price").value);
-  fd.append("stores", JSON.stringify(state.stores));
+
+  // Send only the shops that are switched on. A chain present in this object is
+  // queried; omitted = skipped entirely.
+  const payload = {};
+  ["Woolworths", "New World", "PAK'nSAVE"].forEach((chain) => {
+    if (state.enabled[chain]) payload[chain] = state.stores[chain] || {};
+  });
+  if (Object.keys(payload).length === 0) {
+    status.textContent = "Turn on at least one shop to compare.";
+    return;
+  }
+  fd.append("stores", JSON.stringify(payload));
 
   // Don't hang forever if the server is slow/asleep — fail with a clear message.
   const controller = new AbortController();

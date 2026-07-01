@@ -71,15 +71,21 @@ def search_all(term: str, stores: dict[str, dict], limit_per_store: int = 4) -> 
         sel = stores.get(chain) or {}
         return sel.get("store_id")
 
-    # Run all three chains concurrently so total latency is the slowest single
-    # chain, not the sum -- important when one chain (e.g. Woolworths from an
-    # overseas host) is slow to fail.
-    jobs = [
-        (wlw.search, (term, limit_per_store)),
-        (fs.search, ("New World", term, sid("New World"), limit_per_store)),
-        (fs.search, ("PAK'nSAVE", term, sid("PAK'nSAVE"), limit_per_store)),
-    ]
+    # Only query chains the user left enabled -- a chain is "on" if it's present
+    # in `stores`. This lets the UI switch off a shop (e.g. Woolworths, which is
+    # blocked from the cloud host) so it's never even attempted.
+    all_jobs = {
+        "Woolworths": (wlw.search, (term, limit_per_store)),
+        "New World": (fs.search, ("New World", term, sid("New World"), limit_per_store)),
+        "PAK'nSAVE": (fs.search, ("PAK'nSAVE", term, sid("PAK'nSAVE"), limit_per_store)),
+    }
+    jobs = [job for chain, job in all_jobs.items() if chain in stores]
+
+    # Run enabled chains concurrently so total latency is the slowest single
+    # chain, not the sum.
     pooled: list[Candidate] = []
+    if not jobs:
+        return pooled
     with ThreadPoolExecutor(max_workers=3) as pool:
         for result in pool.map(lambda job: _safe(job[0], *job[1]), jobs):
             pooled += result
