@@ -202,8 +202,10 @@ def _score(tag: TagFields) -> float:
         s += 2.0
     if tag.printed_unit_price is not None:
         s += 1.0
+    # Description helps a little, but keep it well below the numeric signals so a
+    # long run of OCR garbage can't outscore a variant that actually read a price.
     words = len(re.findall(r"[A-Za-z]{3,}", tag.description))
-    s += min(words, 6) * 0.5
+    s += min(words, 6) * 0.25
     return s
 
 
@@ -225,9 +227,14 @@ def read_tag(image_bytes: bytes) -> TagFields:
     except Exception:
         return TagFields()
 
+    # A mild blur suppresses the moiré grid you get when the "tag" is actually a
+    # photo of a screen; sharpen/otsu suit a real matte paper tag. Trying all and
+    # keeping the best parse means we don't have to know which kind of shot it is.
+    descreen = base.filter(ImageFilter.GaussianBlur(1.2))
     variants = [
-        base.filter(ImageFilter.SHARPEN),   # sharpened greyscale
-        _otsu(base),                        # binarised (high-contrast tags)
+        base.filter(ImageFilter.SHARPEN),   # sharp real tag
+        _otsu(base),                        # high-contrast paper tag
+        descreen,                           # de-screened (anti-moiré)
     ]
     best = TagFields()
     best_score = -1.0
