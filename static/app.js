@@ -83,7 +83,7 @@ $("photo").addEventListener("change", (e) => {
 
 $("checkBtn").addEventListener("click", async () => {
   const status = $("status");
-  status.textContent = "Checking…";
+  status.textContent = "Checking prices… (the first check after a quiet spell can take up to a minute to wake the server)";
 
   const fd = new FormData();
   if (pendingPhoto) fd.append("photo", pendingPhoto);
@@ -92,8 +92,13 @@ $("checkBtn").addEventListener("click", async () => {
   if ($("price").value) fd.append("price", $("price").value);
   fd.append("stores", JSON.stringify(state.stores));
 
+  // Don't hang forever if the server is slow/asleep — fail with a clear message.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 90000);
+
   try {
-    const res = await fetch("/api/scan", { method: "POST", body: fd });
+    const res = await fetch("/api/scan", { method: "POST", body: fd, signal: controller.signal });
+    clearTimeout(timer);
     const data = await res.json();
 
     if (data.status === "needs_manual") {
@@ -110,7 +115,10 @@ $("checkBtn").addEventListener("click", async () => {
     status.textContent = `Searched for “${data.search_term}”.`;
     renderResults(data.results);
   } catch (e) {
-    status.textContent = "Something went wrong. Try again.";
+    clearTimeout(timer);
+    status.textContent = e.name === "AbortError"
+      ? "The server took too long to respond. Give it a moment to wake up, then try again."
+      : "Something went wrong. Try again.";
   }
 });
 

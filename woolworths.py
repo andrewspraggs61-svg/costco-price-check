@@ -57,7 +57,7 @@ def search(term: str, limit: int = 5) -> list[Product]:
         params={"target": "search", "search": term,
                 "inStockProductsOnly": "false", "size": str(limit)},
         headers={"x-requested-with": "OnlineShopping.WebApp"},
-        timeout=20,
+        timeout=6,
     )
     r.raise_for_status()
     items = r.json().get("products", {}).get("items", [])

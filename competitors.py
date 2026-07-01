@@ -65,12 +65,22 @@ def search_all(term: str, stores: dict[str, dict], limit_per_store: int = 4) -> 
     {"PAK'nSAVE": {"store_id": "<guid>"}, ...}. Foodstuffs needs the store id
     (franchise pricing); Woolworths ignores it (uniform national pricing).
     """
+    from concurrent.futures import ThreadPoolExecutor
+
     def sid(chain: str):
         sel = stores.get(chain) or {}
         return sel.get("store_id")
 
+    # Run all three chains concurrently so total latency is the slowest single
+    # chain, not the sum -- important when one chain (e.g. Woolworths from an
+    # overseas host) is slow to fail.
+    jobs = [
+        (wlw.search, (term, limit_per_store)),
+        (fs.search, ("New World", term, sid("New World"), limit_per_store)),
+        (fs.search, ("PAK'nSAVE", term, sid("PAK'nSAVE"), limit_per_store)),
+    ]
     pooled: list[Candidate] = []
-    pooled += _safe(wlw.search, term, limit_per_store)
-    pooled += _safe(fs.search, "New World", term, sid("New World"), limit_per_store)
-    pooled += _safe(fs.search, "PAK'nSAVE", term, sid("PAK'nSAVE"), limit_per_store)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        for result in pool.map(lambda job: _safe(job[0], *job[1]), jobs):
+            pooled += result
     return pooled
