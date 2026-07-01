@@ -13,20 +13,29 @@ const $ = (id) => document.getElementById(id);
 // --- Store selection by location -------------------------------------------
 async function detectStores() {
   const locationLine = $("locationLine");
+  locationLine.style.cursor = "pointer";
+  locationLine.title = "Tap to retry location";
+  locationLine.onclick = detectStores;   // tap the line to re-request location
+
   if (!("geolocation" in navigator)) {
-    locationLine.textContent = "Location not available — using default stores.";
+    locationLine.textContent = "Location not available — pick your stores below.";
     return loadStores(null, null);
   }
+  locationLine.textContent = "Finding your nearest stores…";
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       state.coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
       loadStores(state.coords.lat, state.coords.lon);
     },
-    () => {
-      locationLine.textContent = "Location off — using default stores. (Tap ‘Stores’ to change.)";
+    (err) => {
+      const denied = err && err.code === 1;
+      locationLine.textContent = denied
+        ? "📍 Location blocked — allow it in your browser settings, then tap here to retry. (Or pick your stores below.)"
+        : "📍 Couldn't get location — tap here to retry, or pick your stores below.";
       loadStores(null, null);
     },
-    { enableHighAccuracy: false, timeout: 8000 }
+    // More forgiving: longer wait, and accept a recent cached fix.
+    { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }
   );
 }
 
