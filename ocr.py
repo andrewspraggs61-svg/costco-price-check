@@ -75,13 +75,16 @@ def run_ocr(image_bytes: bytes) -> str:
     try:
         from PIL import ImageOps, ImageFilter
         img = Image.open(io.BytesIO(image_bytes)).convert("L")  # greyscale
-        # Upscale small/low-res images -- Tesseract wants tall characters. This
-        # noticeably rescues marginal shots; full-res phone photos pass through.
+        # Normalise resolution before OCR. A full phone photo (~12MP) makes
+        # Tesseract take ~2 minutes on a small free host -- fatal. Downscale big
+        # images (tag text stays legible at ~1800px) and upscale tiny ones so
+        # characters are tall enough to read. This is the key latency fix.
+        TARGET = 1800
         longest = max(img.size)
-        if longest < 1500:
-            factor = 1500 / longest
-            img = img.resize((int(img.width * factor), int(img.height * factor)),
-                             Image.LANCZOS)
+        if longest > TARGET or longest < 1200:
+            factor = TARGET / longest
+            img = img.resize((max(1, int(img.width * factor)),
+                              max(1, int(img.height * factor))), Image.LANCZOS)
         img = ImageOps.autocontrast(img)
         img = img.filter(ImageFilter.SHARPEN)
         # psm 6 = assume a single uniform block of text, which a shelf tag is.

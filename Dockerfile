@@ -19,5 +19,7 @@ COPY . .
 ENV PORT=8080
 EXPOSE 8080
 
-# gunicorn serves the Flask `app` object. 2 workers is plenty for personal use.
-CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT} --workers 2 --timeout 120"]
+# gunicorn serves the Flask `app`. One worker with threads keeps memory low on
+# the 512MB free instance (two workers running Tesseract can OOM), while threads
+# still allow a couple of concurrent users.
+CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT} --workers 1 --threads 4 --timeout 120"]
