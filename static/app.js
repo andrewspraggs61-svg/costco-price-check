@@ -147,7 +147,9 @@ $("checkBtn").addEventListener("click", async () => {
       return;
     }
 
-    status.textContent = `Searched for “${data.search_term}”.`;
+    status.textContent = data.note
+      ? data.note
+      : `Searched for “${data.search_term}”. Showing closest matches by unit price.`;
     renderResults(data.results);
   } catch (e) {
     clearTimeout(timer);

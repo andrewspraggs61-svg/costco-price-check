@@ -106,6 +106,18 @@ def parse_size(text: str) -> tuple[Optional[str], Optional[float]]:
             qty = float(groups[0])
         return BASIS_COUNT, qty * mult
 
+    # Bare unit with no number, e.g. meat priced "per kg" or eggs priced "ea".
+    # Treat as one of that unit: "kg" -> 1000g, "ea" -> 1 unit, etc.
+    bare = text.strip().lower()
+    _BARE = {
+        "kg": (BASIS_WEIGHT, 1000.0), "g": (BASIS_WEIGHT, 1.0),
+        "l": (BASIS_VOLUME, 1.0), "ml": (BASIS_VOLUME, 0.001),
+        "ea": (BASIS_COUNT, 1.0), "each": (BASIS_COUNT, 1.0),
+        "unit": (BASIS_COUNT, 1.0), "pk": (BASIS_COUNT, 1.0), "pack": (BASIS_COUNT, 1.0),
+    }
+    if bare in _BARE:
+        return _BARE[bare]
+
     return None, None
 
 

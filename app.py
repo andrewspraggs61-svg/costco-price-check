@@ -116,20 +116,45 @@ def api_scan():
 
     candidates = comp_mod.search_all(term, selected)
 
-    # 3. Rank Costco item against the pooled competitor candidates.
+    # Keep only competitor items that actually share a word with the search term.
+    # The stores can only sort by cheapest, so a vague term like "lamb" returns
+    # the cheapest thing that merely mentions lamb (patties, sausages) rather
+    # than real lamb. Requiring a shared word drops those non-matches.
+    relevant = [c for c in candidates if _relevance(term, c.name) > 0]
+    note = ""
+    if not relevant:
+        note = ("No closely-matching products found. Try typing a more specific "
+                "product name above (e.g. “lamb leg roast” not just “lamb”), then Check again.")
+
+    # 3. Rank Costco item against the matching competitor candidates.
     costco = Sized(name=name, price=price, store="Costco", raw_size=size)
     comp_sized = [
         Sized(name=c.name, price=c.price, store=c.store, raw_size=c.size)
-        for c in candidates
+        for c in relevant
     ]
     ranked = rank(costco, comp_sized)
 
     return jsonify({
         "status": "ok",
         "search_term": term,
+        "note": note,
         "ocr": _tag_to_dict(tag),
         "results": [_sized_to_dict(s) for s in ranked],
     })
+
+
+def _relevance(term: str, name: str) -> float:
+    """
+    Fraction of the search term's words that appear in a candidate's name.
+    0 means no shared words (almost certainly a different product). Cheap and
+    dependency-free -- good enough to separate real matches from cheap noise.
+    """
+    import re
+    tw = set(re.findall(r"[a-z]+", term.lower()))
+    nw = set(re.findall(r"[a-z]+", name.lower()))
+    if not tw:
+        return 0.0
+    return len(tw & nw) / len(tw)
 
 
 def _tag_to_dict(tag) -> dict | None:
