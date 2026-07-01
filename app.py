@@ -19,6 +19,17 @@ import competitors as comp_mod
 from unit_price import Sized, rank
 
 app = Flask(__name__)
+# Don't let phones cache the app files -- otherwise a deploy doesn't reach an
+# already-opened phone until the user manually clears their cache.
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+
+@app.after_request
+def _no_cache(resp):
+    ct = resp.content_type or ""
+    if ct.startswith("text/html") or "javascript" in ct or ct.startswith("text/css"):
+        resp.headers["Cache-Control"] = "no-store, max-age=0"
+    return resp
 
 
 @app.route("/")
