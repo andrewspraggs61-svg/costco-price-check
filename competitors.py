@@ -34,6 +34,29 @@ def _safe(fn, *args) -> list[Candidate]:
         return []
 
 
+def diagnose(term: str, stores: dict[str, dict]) -> dict:
+    """
+    Per-chain health check: run each lookup and report count or error, so we can
+    tell (e.g. from a cloud host) which chains work from the server's IP.
+    """
+    def sid(chain):
+        return (stores.get(chain) or {}).get("store_id")
+
+    checks = {
+        "Woolworths": (wlw.search, (term, 3)),
+        "New World": (fs.search, ("New World", term, sid("New World"), 3)),
+        "PAK'nSAVE": (fs.search, ("PAK'nSAVE", term, sid("PAK'nSAVE"), 3)),
+    }
+    out = {}
+    for chain, (fn, args) in checks.items():
+        try:
+            products = fn(*args)
+            out[chain] = {"ok": True, "count": len(products)}
+        except Exception as e:
+            out[chain] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:200]}
+    return out
+
+
 def search_all(term: str, stores: dict[str, dict], limit_per_store: int = 4) -> list[Candidate]:
     """
     Query every chain and pool results.

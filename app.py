@@ -42,6 +42,14 @@ def api_stores():
     })
 
 
+@app.route("/api/debug")
+def api_debug():
+    """Per-chain lookup health check (which supermarkets work from this host)."""
+    term = request.args.get("term", "butter")
+    # Use each chain's default store when none supplied.
+    return jsonify(comp_mod.diagnose(term, {}))
+
+
 @app.route("/api/scan", methods=["POST"])
 def api_scan():
     """
