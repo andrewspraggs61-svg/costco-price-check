@@ -2,5 +2,9 @@
 __pycache__/
 *.pyc
 server.log
-sample_tag.jpg
 .claude/launch.json
+# Tag photos are personal test data -- never commit them.
+*.jpg
+*.jpeg
+big_tag.jpg
+real_tag.*
