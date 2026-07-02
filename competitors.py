@@ -12,8 +12,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import woolworths as wlw
+import woolworths as wlw   # kept as a fallback; Woolworths now comes via grocer
 import foodstuffs as fs
+import grocer
 
 
 @dataclass
@@ -43,7 +44,7 @@ def diagnose(term: str, stores: dict[str, dict]) -> dict:
         return (stores.get(chain) or {}).get("store_id")
 
     checks = {
-        "Woolworths": (wlw.search, (term, 3)),
+        "Woolworths": (grocer.search, (term, grocer.WOOLWORTHS_NATIONAL_STORE_ID, "Woolworths", 3)),
         "New World": (fs.search, ("New World", term, sid("New World"), 3)),
         "PAK'nSAVE": (fs.search, ("PAK'nSAVE", term, sid("PAK'nSAVE"), 3)),
     }
@@ -75,7 +76,10 @@ def search_all(term: str, stores: dict[str, dict], limit_per_store: int = 4) -> 
     # in `stores`. This lets the UI switch off a shop (e.g. Woolworths, which is
     # blocked from the cloud host) so it's never even attempted.
     all_jobs = {
-        "Woolworths": (wlw.search, (term, limit_per_store)),
+        # Woolworths via grocer.nz open data (works from the cloud host, unlike
+        # querying Woolworths directly).
+        "Woolworths": (grocer.search,
+                       (term, grocer.WOOLWORTHS_NATIONAL_STORE_ID, "Woolworths", limit_per_store)),
         "New World": (fs.search, ("New World", term, sid("New World"), limit_per_store)),
         "PAK'nSAVE": (fs.search, ("PAK'nSAVE", term, sid("PAK'nSAVE"), limit_per_store)),
     }

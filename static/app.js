@@ -3,9 +3,9 @@
 const state = {
   stores: {},        // per-chain selection sent to the backend
   coords: null,
-  // Which shops are switched on. Woolworths defaults OFF because it's blocked
-  // from the free cloud host; the user can turn it on (e.g. if self-hosting).
-  enabled: { "Woolworths": false, "New World": true, "PAK'nSAVE": true },
+  // Which shops are switched on. Woolworths now works via grocer.nz open data,
+  // so it's back on by default.
+  enabled: { "Woolworths": true, "New World": true, "PAK'nSAVE": true },
 };
 
 const $ = (id) => document.getElementById(id);

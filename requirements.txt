@@ -6,7 +6,11 @@ gunicorn>=21.0
 #   The app still runs without it — it just falls back to manual entry.
 pytesseract>=0.3.10
 Pillow>=10.0
-# For the live competitor lookups (currently mocked):
+# For the competitor lookups:
 requests>=2.31
+# grocer.nz open data: DuckDB reads the catalogue + per-store price parquet files;
+# brotli decompresses the base catalogue if the CDN serves it compressed.
+duckdb>=1.0
+brotli>=1.1
 # Optional v2: fuzzy text-similarity to refine ranking
 # rapidfuzz>=3.0
